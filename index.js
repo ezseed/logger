@@ -24,7 +24,7 @@ module.exports = function (config, child) {
 			config.src = true
 			config.streams = [
 			    {
-			      stream: require('bunyan-format')({ outputMode: 'long', colorFromLevel: true }),
+			      stream: require('bunyan-format')({ outputMode: 'short', colorFromLevel: true }),
 			    }
 			]
 
