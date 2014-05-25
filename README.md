@@ -1,4 +1,4 @@
-logger https://travis-ci.org/ezseed/logger.svg?branch=master
+logger [![Build Status](https://travis-ci.org/ezseed/logger.svg?branch=master)](https://travis-ci.org/ezseed/logger)
 ======
 
 Logger
