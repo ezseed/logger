@@ -1,4 +1,4 @@
-logger
+logger https://travis-ci.org/ezseed/logger.svg?branch=master
 ======
 
 Logger
