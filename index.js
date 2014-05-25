@@ -1,59 +1,86 @@
-var bunyan = require('bunyan')
+var chalk = require('chalk')
+  , util = require('util')
+  , mkdirp = require('mkdirp')
   , p = require('path')
   , fs = require('fs')
-  , exists = false
 
-/**
- * LEVELS
- * "fatal" (60): The service/app is going to stop or become unusable now. An operator should definitely look into this soon.
- * "error" (50): Fatal for a particular request, but the service/app continues servicing other requests. An operator should look at this soon(ish).
- * "warn" (40): A note on something that should probably be looked at by an operator eventually.
- * "info" (30): Detail on regular operation.
- * "debug" (20): Anything else, i.e. too verbose to be included in "info" level.
- * "trace" (10): Logging from external libraries used by your app or very detailed application logging.
- */
+var logger = {
+	out: function(stream) {
+		if(!stream || typeof stream.write != 'function') {
+	    throw new TypeError('logger expects a writable stream instance')
+		}
 
-module.exports = function (config, child) {
+		var newline = this.config.newline === false ? '' : '\n'
+		  , child = this.config.child ? '(' + this.config.child + ') ' : ''
 
-	config = config ? config : {}
-	config.name = config.name ? config.name : 'ezseed'
-	
-	if(!config.streams) {
-		if(process.env.DEBUG) {
+		var self = this
 
-			config.src = true
-			config.streams = [
-			    {
-			      stream: require('bunyan-format')({ outputMode: 'short', colorFromLevel: true }),
-			    }
-			]
+		return function() {
+			stream.write(child + util.format.apply(this, arguments) + newline);
+			
+			return self.logger
+		}
+	},
+	prefix: function(method) {
+		if(this.config.prefix)
+			return this.config.prefix
 
-		} else {
-			var cwd = config.cwd ? config.cwd : process.cwd()
-			  , log_path = p.join(cwd, 'logs')
+		if(this.config.noprefix)
+			return ''
 
-			if(!exists && !fs.existsSync(log_path)) {
-				console.log('test')
-				fs.mkdirSync(log_path)
-				exists = true
+		var prefix = ''
+		prefix = this.config.nocolors ? method + ':' : this.config.colors[method](method) + ':'
+		prefix = this.config.time ? '[' + new Date().toLocaleString() + '] ' + prefix : prefix
+
+		return prefix
+	},
+	init: function(child, config) {
+
+		if(typeof child == 'object') {
+			config = child
+			child = ''
+		}
+
+		config = config ? config : {}
+		config.child = child || config.child || ''
+
+		var logger = {}
+		  , stdout = config.stdout || process.stdout
+			, stderr = config.stderr || process.stderr
+
+		config.colors = config.colors || {
+			log: chalk.black,
+			info: chalk.blue,
+			warn: chalk.yellow,
+			error: chalk.red
+		}
+
+		if(config.cwd) {
+
+			var log_path = p.join(config.cwd, 'logs')
+
+			if(!fs.existsSync(log_path)) {
+				mkdirp.sync(log_path)
 			}
 
-			config.streams = [
-			    {
-					type: 'rotating-file',
-			        path: p.join(log_path, 'out.log'),
-			        period: '1d',   // daily rotation - default
-			        count: 10 //keep 10 max - default
-			    },
-			    {
-					level: 'error',
-					type: 'rotating-file',
-					path: p.join(log_path, 'err.log')
-			    }
-			]
+			stderr = fs.createWriteStream(p.join(log_path, 'err.log'))
+			stdout = fs.createWriteStream(p.join(log_path, 'out.log'))
 		}
-	}
-	
-	return child ? bunyan.createLogger(config).child({module: child}) : bunyan.createLogger(config)
 
+		this.config = config
+		this.logger = {}
+
+		var self = this
+
+		;['log', 'info', 'warn', 'error'].forEach(function(method) {
+			var binder = method == 'log' || method == 'info' ? self.out(stdout) : self.out(stderr)
+			  , prefixer = self.prefix(method)
+
+	    self.logger[method] = prefixer.length === 0 ? binder.bind(self) : binder.bind(self, prefixer)
+		})
+
+		return this.logger	
+	}
 }
+
+module.exports = logger.init.bind(logger)
