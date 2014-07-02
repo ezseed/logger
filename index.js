@@ -5,82 +5,84 @@ var chalk = require('chalk')
   , fs = require('fs')
 
 var logger = {
-	out: function(stream) {
-		if(!stream || typeof stream.write != 'function') {
-	    throw new TypeError('logger expects a writable stream instance')
-		}
+  out: function(stream) {
+    if(!stream || typeof stream.write != 'function') {
+      throw new TypeError('logger expects a writable stream instance')
+    }
 
-		var newline = this.config.newline === false ? '' : '\n'
-		  , child = this.config.child ? '(' + this.config.child + ') ' : ''
+    var newline = this.config.newline === false ? '' : '\n'
+      , child = this.config.child ? '(' + this.config.child + ') ' : ''
 
-		var self = this
+    var self = this
 
-		return function() {
-			stream.write(child + util.format.apply(this, arguments) + newline);
-			
-			return self.logger
-		}
-	},
-	prefix: function(method) {
-		if(this.config.prefix)
-			return this.config.prefix
+    return function() {
 
-		if(this.config.noprefix)
-			return ''
+      if(process.argv.indexOf('-q') === -1 && process.argv.indexOf('-quiet') === -1) {
+        stream.write(child + util.format.apply(this, arguments) + newline);
+      }
 
-		var prefix = ''
-		prefix = this.config.nocolors ? method + ':' : this.config.colors[method](method) + ':'
-		prefix = this.config.time ? '[' + new Date().toLocaleString() + '] ' + prefix : prefix
+      return self.logger
+    }
+  },
+  prefix: function(method) {
+    if(this.config.prefix)
+      return this.config.prefix
 
-		return prefix
-	},
-	init: function(child, config) {
+    if(this.config.noprefix)
+      return ''
 
-		if(typeof child == 'object') {
-			config = child
-			child = ''
-		}
+    var prefix = ''
+    prefix = this.config.nocolors ? method + ':' : this.config.colors[method](method) + ':'
+    prefix = this.config.time ? '[' + new Date().toLocaleString() + '] ' + prefix : prefix
 
-		config = config ? config : {}
-		config.child = child || config.child || ''
+    return prefix
+  },
+  init: function(child, config) {
 
-		var logger = {}
-		  , stdout = config.stdout || process.stdout
-			, stderr = config.stderr || process.stderr
+    if(typeof child == 'object') {
+      config = child
+      child = ''
+    }
 
-		config.colors = config.colors || {
-			log: chalk.black,
-			info: chalk.blue,
-			warn: chalk.yellow,
-			error: chalk.red
-		}
+    config = config ? config : {}
+    config.child = child || config.child || ''
 
-		if(config.cwd) {
+    var stdout = config.stdout || process.stdout
+      , stderr = config.stderr || process.stderr
 
-			var log_path = p.join(config.cwd, 'logs')
+    config.colors = config.colors || {
+      log: chalk.black,
+      info: chalk.blue,
+      warn: chalk.yellow,
+      error: chalk.red
+    }
 
-			if(!fs.existsSync(log_path)) {
-				mkdirp.sync(log_path)
-			}
+    if(config.cwd) {
 
-			stderr = fs.createWriteStream(p.join(log_path, 'err.log'))
-			stdout = fs.createWriteStream(p.join(log_path, 'out.log'))
-		}
+      var log_path = p.join(config.cwd, 'logs')
 
-		this.config = config
-		this.logger = {}
+      if(!fs.existsSync(log_path)) {
+        mkdirp.sync(log_path)
+      }
 
-		var self = this
+      stderr = fs.createWriteStream(p.join(log_path, 'err.log'))
+      stdout = fs.createWriteStream(p.join(log_path, 'out.log'))
+    }
 
-		;['log', 'info', 'warn', 'error'].forEach(function(method) {
-			var binder = method == 'log' || method == 'info' ? self.out(stdout) : self.out(stderr)
-			  , prefixer = self.prefix(method)
+    this.config = config
+    this.logger = {}
 
-	    self.logger[method] = prefixer.length === 0 ? binder.bind(self) : binder.bind(self, prefixer)
-		})
+    var self = this
 
-		return this.logger	
-	}
+    ;['log', 'info', 'warn', 'error'].forEach(function(method) {
+      var binder = method == 'log' || method == 'info' ? self.out(stdout) : self.out(stderr)
+        , prefixer = self.prefix(method)
+
+      self.logger[method] = prefixer.length === 0 ? binder.bind(self) : binder.bind(self, prefixer)
+    })
+
+    return this.logger
+  }
 }
 
 module.exports = logger.init.bind(logger)
