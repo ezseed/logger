@@ -17,8 +17,11 @@ var logger = {
 
     return function() {
 
+      var args = [].slice.call(arguments)
+      var method = args.shift() 
+
       if(process.argv.indexOf('-q') === -1 && process.argv.indexOf('-quiet') === -1) {
-        stream.write(child + util.format.apply(this, arguments) + newline);
+        stream.write(child + method + util.format.apply(null, args) + newline);
       }
 
       return self.logger
@@ -32,7 +35,7 @@ var logger = {
       return ''
 
     var prefix = ''
-    prefix = this.config.nocolors ? method + ':' : this.config.colors[method](method) + ':'
+    prefix = this.config.nocolors ? method + ': ' : this.config.colors[method](method) + ': '
     prefix = this.config.time ? '[' + new Date().toLocaleString() + '] ' + prefix : prefix
 
     return prefix
@@ -51,8 +54,9 @@ var logger = {
       , stderr = config.stderr || process.stderr
 
     config.colors = config.colors || {
-      log: chalk.black,
+      log: chalk.grey,
       info: chalk.blue,
+      debug: chalk.cyan,
       warn: chalk.yellow,
       error: chalk.red
     }
@@ -74,8 +78,8 @@ var logger = {
 
     var self = this
 
-    ;['log', 'info', 'warn', 'error'].forEach(function(method) {
-      var binder = method == 'log' || method == 'info' ? self.out(stdout) : self.out(stderr)
+    ;['log', 'info', 'warn', 'error', 'debug'].forEach(function(method) {
+      var binder = method == 'log' || method == 'info' || method == 'debug' ? self.out(stdout) : self.out(stderr)
         , prefixer = self.prefix(method)
 
       self.logger[method] = prefixer.length === 0 ? binder.bind(self) : binder.bind(self, prefixer)
