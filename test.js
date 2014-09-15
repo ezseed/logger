@@ -57,11 +57,11 @@ describe('functionnal', function() {
 
   it('should log without color', test('test', 'log: test\n', {nocolors: true}) )
 
-  it('should log with date', test('test', '[' + new Date().toLocaleString() + '] ' + chalk.black('log') + ': test\n', {time: true}) )
+  it('should log with date', test('test', '[' + new Date().toLocaleString() + '] ' + chalk.grey('log') + ': test\n', {time: true}) )
 
-  it('should log with color', test('test', chalk.black('log') + ': test\n') )
+  it('should log with color', test('test', chalk.grey('log') + ': test\n') )
 
-  it('should log with custom prefix', test('test', '\o/ test\n', {prefix: '\o/'}) )
+  it('should log with custom prefix', test('test', '\\o/ test\n', {prefix: '\\o/ '}) )
 
   it('should log with child', test('test', '(child) test\n', {noprefix: true, child: 'child'}) )
 
@@ -108,6 +108,10 @@ describe('E2E', function() {
 
   it('should log with date', function() {
     require('./')({time: true}).log('test')
+  })
+
+  it('should format log', function() {
+    require('./')().log('%s test %s', 'log', 'me')
   })
 
   it('should log with color', function() {
